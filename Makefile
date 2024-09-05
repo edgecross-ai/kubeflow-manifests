@@ -9,20 +9,20 @@ install-awscli:
 	aws --version
 
 install-eksctl:
-	$(eval EKSCTL_VERSION:=v0.137.0)
+	$(eval EKSCTL_VERSION:=v0.188.0)
 	curl --silent --location "https://github.com/weaveworks/eksctl/releases/download/$(EKSCTL_VERSION)/eksctl_Linux_amd64.tar.gz" | tar xz -C /tmp
 	sudo mv /tmp/eksctl /usr/local/bin
 	eksctl version
 
 install-kubectl:
-	$(eval KUBECTL_VERSION:=v1.25.0)
+	$(eval KUBECTL_VERSION:=v1.29.0)
 	curl -LO "https://dl.k8s.io/release/$(KUBECTL_VERSION)/bin/linux/amd64/kubectl"
 	sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 	rm kubectl
 	kubectl version --client
 
 install-kustomize:
-	$(eval KUSTOMIZE_VERSION:=5.0.1)
+	$(eval KUSTOMIZE_VERSION:=5.0.4)
 	curl --silent --location "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv$(KUSTOMIZE_VERSION)/kustomize_v$(KUSTOMIZE_VERSION)_linux_amd64.tar.gz" | tar xz -C /tmp
 	chmod +x /tmp/kustomize
 	sudo mv /tmp/kustomize /usr/local/bin/kustomize
@@ -49,18 +49,15 @@ install-terraform:
 	terraform --version
 
 install-helm: 
-	wget https://get.helm.sh/helm-v3.12.2-linux-amd64.tar.gz
-	tar -zxvf helm-v3.12.2-linux-amd64.tar.gz
-	sudo mv linux-amd64/helm /usr/local/bin/helm
+	curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 	helm version
 
 install-python:
-	sudo apt install -q python3.8 -y 
 	sudo apt install -q python3-pip -y
-	python3.8 -m pip install --upgrade pip
+	python3.10 -m pip install --upgrade pip
 
 install-python-packages:
-	python3.8 -m pip install -r tests/e2e/requirements.txt
+	python3.10 -m pip install -r tests/e2e/requirements.txt
 
 install-tools: install-awscli install-eksctl install-kubectl install-kustomize install-yq install-jq install-terraform install-helm install-python install-python-packages
 
@@ -71,7 +68,7 @@ verify-cluster-variables:
 create-eks-cluster: verify-cluster-variables
 	eksctl create cluster \
 	--name $(CLUSTER_NAME) \
-	--version 1.25 \
+	--version 1.29 \
 	--region $(CLUSTER_REGION) \
 	--nodegroup-name linux-nodes \
 	--node-type m5.xlarge \
@@ -92,23 +89,23 @@ port-forward:
 bootstrap-ack: verify-cluster-variables connect-to-eks-cluster
 	yq e '.cluster.name=env(CLUSTER_NAME)' -i tests/e2e/utils/ack_sm_controller_bootstrap/config.yaml
 	yq e '.cluster.region=env(CLUSTER_REGION)' -i tests/e2e/utils/ack_sm_controller_bootstrap/config.yaml
-	cd tests/e2e && PYTHONPATH=.. python3.8 utils/ack_sm_controller_bootstrap/setup_sm_controller_req.py
+	cd tests/e2e && PYTHONPATH=.. python3.10 utils/ack_sm_controller_bootstrap/setup_sm_controller_req.py
 
 cleanup-ack-req: verify-cluster-variables
 	yq e '.cluster.name=env(CLUSTER_NAME)' -i tests/e2e/utils/ack_sm_controller_bootstrap/config.yaml
 	yq e '.cluster.region=env(CLUSTER_REGION)' -i tests/e2e/utils/ack_sm_controller_bootstrap/config.yaml
-	cd tests/e2e && PYTHONPATH=.. python3.8 utils/ack_sm_controller_bootstrap/cleanup_sm_controller_req.py
+	cd tests/e2e && PYTHONPATH=.. python3.10 utils/ack_sm_controller_bootstrap/cleanup_sm_controller_req.py
 
 deploy-kubeflow: bootstrap-ack
 	$(eval DEPLOYMENT_OPTION:=vanilla)
 	$(eval INSTALLATION_OPTION:=kustomize)
 	$(eval PIPELINE_S3_CREDENTIAL_OPTION:=irsa)
-	cd tests/e2e && PYTHONPATH=.. python3.8 utils/kubeflow_installation.py --deployment_option $(DEPLOYMENT_OPTION) --installation_option $(INSTALLATION_OPTION) --pipeline_s3_credential_option $(PIPELINE_S3_CREDENTIAL_OPTION) --cluster_name $(CLUSTER_NAME)
+	cd tests/e2e && PYTHONPATH=.. python3.10 utils/kubeflow_installation.py --deployment_option $(DEPLOYMENT_OPTION) --installation_option $(INSTALLATION_OPTION) --pipeline_s3_credential_option $(PIPELINE_S3_CREDENTIAL_OPTION) --cluster_name $(CLUSTER_NAME)
 
 delete-kubeflow:
 	$(eval DEPLOYMENT_OPTION:=vanilla)
 	$(eval INSTALLATION_OPTION:=kustomize)
-	cd tests/e2e && PYTHONPATH=.. python3.8 utils/kubeflow_uninstallation.py --deployment_option $(DEPLOYMENT_OPTION) --installation_option $(INSTALLATION_OPTION)
+	cd tests/e2e && PYTHONPATH=.. python3.10 utils/kubeflow_uninstallation.py --deployment_option $(DEPLOYMENT_OPTION) --installation_option $(INSTALLATION_OPTION)
 
 helmify:
-	PYTHONPATH=. python3.8 tools/helmify/src/kustomize_to_helm_automation.py
+	PYTHONPATH=. python3.10 tools/helmify/src/kustomize_to_helm_automation.py
